@@ -1,3 +1,71 @@
+function sqlRecordsToObj(sqlRecords){
+    var array = [];
+   
+    sqlRecords.forEach(function(d) {
+        if(d.Indicator==='Cumulative number of confirmed, probable and suspected Ebola deaths'){
+            array = deaths["Total"];
+            getCasesAndDeaths(d.Date, d, array);
+            if(d.Country==='Guinea'||d.Country==='Liberia'||d.Country==='Sierra Leone'){
+                array = deaths[d.Country];
+                getCasesAndDeaths(d.Date, d, array);
+            }
+        } 
+        if(d.Indicator==='Cumulative number of confirmed, probable and suspected Ebola cases') {
+            array = cases["Total"];
+            getCasesAndDeaths(d.Date, d, array);
+            if(d.Country==='Guinea'||d.Country==='Liberia'||d.Country==='Sierra Leone'){
+                array = cases[d.Country];
+                getCasesAndDeaths(d.Date, d, array);
+            }        
+        }
+    });
+		
+	// convert date
+	for(i=0;i<cases["Total"].length;i++){
+        cases["Total"][i].key = new Date(cases["Total"][i].key);
+        cases["Liberia"][i].key = new Date(cases["Liberia"][i].key);
+        cases["Sierra Leone"][i].key = new Date(cases["Sierra Leone"][i].key);
+        cases["Guinea"][i].key = new Date(cases["Guinea"][i].key);
+    }
+    for(i=0;i<deaths["Total"].length;i++){
+        deaths["Total"][i].key = new Date(deaths["Total"][i].key);
+        deaths["Liberia"][i].key = new Date(deaths["Liberia"][i].key);
+        deaths["Sierra Leone"][i].key = new Date(deaths["Sierra Leone"][i].key);
+        deaths["Guinea"][i].key = new Date(deaths["Guinea"][i].key);    
+    }
+		
+	cases["Total"].sort(function(a,b){return b.key - a.key;});
+	cases["Liberia"].sort(function(a,b){return b.key - a.key;});
+	cases["Sierra Leone"].sort(function(a,b){return b.key - a.key;});
+	cases["Guinea"].sort(function(a,b){return b.key - a.key;});
+	deaths["Total"].sort(function(a,b){return b.key - a.key;});
+	deaths["Liberia"].sort(function(a,b){return b.key - a.key;});
+	deaths["Sierra Leone"].sort(function(a,b){return b.key - a.key;});
+	deaths["Guinea"].sort(function(a,b){return b.key - a.key;});
+}
+
+function checkItem(dt, data) {
+    var flag = false;
+    for (var i=0; i<data.length; i++) {
+        if (data[i]["key"] === dt)
+            flag = i;    
+    }
+    return flag;
+}
+
+function getCasesAndDeaths(dt, item, data) {
+    var temp = {}; 
+    var n = checkItem(dt, data);
+    if (data.length !== 0 && n !== false) {
+        data[n]["value"] += item.value;
+   }
+   else {
+        temp["key"]=dt;
+        temp["value"]=item.value;
+        data.push(temp);
+   } 
+}
+
 function generateLineChart(){
     var margin = {top: 20, right: 20, bottom: 25, left: 55},
         width = $("#line_total").width() - margin.left - margin.right,
@@ -578,23 +646,29 @@ function generateBarChart(filter){
             .attr("fill","steelblue");
 }
 
+var cases = {"Total": [], "Guinea": [], "Liberia": [], "Sierra Leone": []};
+var deaths = {"Total": [], "Guinea": [], "Liberia": [], "Sierra Leone": []};
+
+var sql = 'SELECT * FROM "f48a3cf9-110e-4892-bedf-d4c1d725a7d1" ';
+var sqldata = encodeURIComponent(JSON.stringify({sql: sql}));
+
+$.ajax({
+  type: 'POST',
+  dataType: 'json',
+  url: 'https://data.hdx.rwlabs.org/api/3/action/datastore_search_sql',
+  data: sqldata,
+  success: function(sqldata) {
+      //var processedData = processData(data.result.records);
+      sqlRecordsToObj(sqldata.result.records);
+			//generateLineChart('#ebola_graph',processedData);
+  }
+});
+
 var currentFilter = "Total";
 //var color = {"Sierra Leone":"#5677fc","Liberia":"#e51c23","Guinea":"#ffeb3b","Nigeria":"#259b24"};
 var color = {"Sierra Leone":"#f36c60","Liberia":"#b0120a","Guinea":"#dd191d"};
 var duration = 1500;
 var parseDate = d3.time.format("%d/%m/%Y").parse;
-var i;
-
-for(i=0;i<cases["Total"].length;i++){
-    cases["Total"][i].key = parseDate(cases["Total"][i].key);
-    cases["Liberia"][i].key = parseDate(cases["Liberia"][i].key);
-    cases["Sierra Leone"][i].key = parseDate(cases["Sierra Leone"][i].key);
-    cases["Guinea"][i].key = parseDate(cases["Guinea"][i].key);
-    deaths["Total"][i].key = parseDate(deaths["Total"][i].key);
-    deaths["Liberia"][i].key = parseDate(deaths["Liberia"][i].key);
-    deaths["Sierra Leone"][i].key = parseDate(deaths["Sierra Leone"][i].key);
-    deaths["Guinea"][i].key = parseDate(deaths["Guinea"][i].key);    
-}
 
 for(i=0;i<data.length;i++){
     data[i].WeekDate=parseDate(data[i].WeekDate);
@@ -625,8 +699,11 @@ var lastWeeks = [parseDate("23/02/2015").valueOf(),parseDate("16/02/2015").value
 //helper function for formatting numbers with comma separator for thousands
 var formatComma = d3.format(",");
 
-$('#update_date').html(cases['Total'][cases['Total'].length-1]['key'].toDateString()); 
-generateLineChart();
-generateKeyStats("#key_stats",keyStats["Total"],cases["Total"],deaths['Total']);
-generateBarChart(currentFilter);
-generateMap();
+var delay=1000;// 1 seconds 
+setTimeout(function(){
+	$('#update_date').html(cases['Total'][cases['Total'].length-1]['key'].toDateString()); 
+	generateLineChart();
+	generateKeyStats("#key_stats",keyStats["Total"],cases["Total"],deaths['Total']);
+	generateBarChart(currentFilter);
+	generateMap();
+},delay); 
