@@ -701,7 +701,7 @@ var formatComma = d3.format(",");
 
 var delay=1000;// 1 seconds 
 setTimeout(function(){
-	$('#update_date').html(cases['Total'][cases['Total'].length-1]['key'].toDateString()); 
+	$('#update_date').html(cases['Total'][0]['key'].toDateString()); 
 	generateLineChart();
 	generateKeyStats("#key_stats",keyStats["Total"],cases["Total"],deaths['Total']);
 	generateBarChart(currentFilter);
